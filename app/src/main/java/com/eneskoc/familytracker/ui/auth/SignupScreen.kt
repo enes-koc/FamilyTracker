@@ -12,7 +12,9 @@ import androidx.navigation.fragment.findNavController
 import com.eneskoc.data.Resource
 import com.eneskoc.familytracker.R
 import com.eneskoc.familytracker.databinding.FragmentSignupScreenBinding
+import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -24,17 +26,20 @@ class SignupScreen : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
     }
-
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View? {
         _binding = FragmentSignupScreenBinding.inflate(inflater, container, false)
         val view = binding.root
+        return view
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
 
         binding.btnSignup.setOnClickListener {
-            println("Deneme")
+            println("Buton çalıştı")
             val name=binding.etName.text.toString()
             val email = binding.etEmail.text.toString()
             val password = binding.etPassword.text.toString()
@@ -42,21 +47,18 @@ class SignupScreen : Fragment() {
             viewModel.signup(name,email, password)
 
             viewLifecycleOwner.lifecycleScope.launch {
-                viewModel.signupFlow.collect { resource ->
+                println("Launch çalıştı")
+                viewModel.signupFlow.collectLatest { resource ->
                     when (resource) {
                         is Resource.Success -> {
-                            // Başarı durumu, kullanıcı oturum açmıştır
-                            println("Account Created")
+                            Snackbar.make(view, "Your account has been successfully created", Snackbar.LENGTH_LONG).show()
                             findNavController().navigate(R.id.action_signupScreen_to_loginScreen)
                         }
                         is Resource.Failure -> {
-                            // Hata durumu, kullanıcı oturum açarken bir hata oluştu
                             val exception = resource.exception
-                            // Hata işleme
-                            println(exception)
+                            Snackbar.make(view, exception.message.toString(), Snackbar.LENGTH_LONG).show()
                         }
                         is Resource.Loading -> {
-                            // Yüklenme durumu, oturum açma işlemi devam ediyor
                         }
                         else -> {}
                     }
@@ -64,6 +66,8 @@ class SignupScreen : Fragment() {
             }
         }
 
-        return view
+        binding.tvLoginMessage.setOnClickListener {
+            findNavController().navigate(R.id.action_signupScreen_to_loginScreen)
+        }
     }
 }
