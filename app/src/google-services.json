@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "737869944180",
+    "project_id": "familytracker-27f9e",
+    "storage_bucket": "familytracker-27f9e.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:737869944180:android:0a75ff0858c86df66b8821",
+        "android_client_info": {
+          "package_name": "com.eneskoc.familytracker"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "737869944180-mg87m69aus3fqffmij0pqvueqljb0dj1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBAprJiH66U3gOrqSBWLzi_-4dm0x7YqGc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "737869944180-mg87m69aus3fqffmij0pqvueqljb0dj1.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
