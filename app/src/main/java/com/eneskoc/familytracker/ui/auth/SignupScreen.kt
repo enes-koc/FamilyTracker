@@ -20,7 +20,7 @@ import kotlinx.coroutines.launch
 @AndroidEntryPoint
 class SignupScreen : Fragment() {
 
-    private val viewModel by viewModels<AuthViewModel>()
+    private val authViewModel by viewModels<AuthViewModel>()
     private var _binding: FragmentSignupScreenBinding? = null
     private val binding get() = _binding!!
 
@@ -39,16 +39,14 @@ class SignupScreen : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         binding.btnSignup.setOnClickListener {
-            println("Buton çalıştı")
             val name=binding.etName.text.toString()
             val email = binding.etEmail.text.toString()
             val password = binding.etPassword.text.toString()
 
-            viewModel.signup(name,email, password)
+            authViewModel.signup(name,email, password)
 
             viewLifecycleOwner.lifecycleScope.launch {
-                println("Launch çalıştı")
-                viewModel.signupFlow.collectLatest { resource ->
+                authViewModel.signupFlow.collectLatest { resource ->
                     when (resource) {
                         is Resource.Success -> {
                             Snackbar.make(view, "Your account has been successfully created", Snackbar.LENGTH_LONG).show()

@@ -1,6 +1,8 @@
 package com.eneskoc.familytracker.ui.auth
 
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
@@ -23,7 +25,7 @@ import kotlinx.coroutines.launch
 @AndroidEntryPoint
 class LoginScreen : Fragment() {
 
-    private val viewModel by viewModels<AuthViewModel>()
+    private val authViewModel by viewModels<AuthViewModel>()
     private var _binding: FragmentLoginScreenBinding? = null
     private val binding get() = _binding!!
 
@@ -47,10 +49,10 @@ class LoginScreen : Fragment() {
             val email = binding.etEmail.text.toString()
             val password = binding.etPassword.text.toString()
 
-            viewModel.login(email, password)
+            authViewModel.login(email, password)
 
             viewLifecycleOwner.lifecycleScope.launch {
-                viewModel.loginFlow.collectLatest { resource ->
+                authViewModel.loginFlow.collect { resource ->
                     when (resource) {
                         is Resource.Success -> {
                             findNavController().navigate(R.id.action_loginScreen_to_homeScreen)
@@ -58,6 +60,7 @@ class LoginScreen : Fragment() {
                         is Resource.Failure -> {
                             val exception = resource.exception
                             Snackbar.make(view, exception.message.toString(), Snackbar.LENGTH_LONG).show()
+                            findNavController().navigate(R.id.action_loginScreen_self)
                         }
                         is Resource.Loading -> {
 
