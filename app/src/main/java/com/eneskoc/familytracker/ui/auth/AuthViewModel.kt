@@ -1,9 +1,10 @@
 package com.eneskoc.familytracker.ui.auth
 
+import android.location.Location
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.eneskoc.data.AuthRepository
-import com.eneskoc.data.Resource
+import com.eneskoc.familytracker.data.AuthRepository
+import com.eneskoc.familytracker.data.Resource
 import com.google.firebase.auth.FirebaseUser
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,13 +23,22 @@ class AuthViewModel @Inject constructor(
     private val _signupFlow = MutableStateFlow<Resource<FirebaseUser>?>(null)
     val signupFlow: StateFlow<Resource<FirebaseUser>?> = _signupFlow
 
+    private val _sendDataFlow = MutableStateFlow<Resource<Unit>?>(null)
+    val sendDataFlow: StateFlow<Resource<Unit>?> = _sendDataFlow
+
     val currentUser: FirebaseUser?
         get() = repository.currentUser
     
     init {
         if(repository.currentUser!=null){
-            _loginFlow.value=Resource.Success(repository.currentUser!!)
+            _loginFlow.value= Resource.Success(repository.currentUser!!)
         }
+    }
+
+    fun sendLocationData(location: Location, batteryLevel:Float) = viewModelScope.launch {
+        _sendDataFlow.value = Resource.Loading
+        val result = repository.sendLocationData(location, batteryLevel)
+        _sendDataFlow.value = result
     }
 
     fun login(email: String, password: String) = viewModelScope.launch {
@@ -42,6 +52,8 @@ class AuthViewModel @Inject constructor(
         val result = repository.signup(name, email, password)
         _signupFlow.value = result
     }
+
+
 
     fun logout() {
         repository.logout()

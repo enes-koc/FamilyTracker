@@ -9,7 +9,7 @@ import androidx.activity.viewModels
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
-import com.eneskoc.data.Resource
+import com.eneskoc.familytracker.data.Resource
 import com.eneskoc.familytracker.R
 import com.eneskoc.familytracker.databinding.FragmentSignupScreenBinding
 import com.google.android.material.snackbar.Snackbar
