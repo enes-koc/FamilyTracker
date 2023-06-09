@@ -2,6 +2,7 @@ package com.eneskoc.familytracker.ui
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Intent
 
 import android.location.Location
 import android.os.Build
@@ -9,19 +10,28 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Switch
 import androidx.activity.addCallback
+import androidx.appcompat.widget.SwitchCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.Observer
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.eneskoc.familytracker.R
 import com.eneskoc.familytracker.data.Resource
 import com.eneskoc.familytracker.databinding.FragmentHomeScreenBinding
+import com.eneskoc.familytracker.other.Constants.ACTION_START_OR_RESUME_SERVICE
+import com.eneskoc.familytracker.other.Constants.ACTION_STOP_SERVICE
 import com.eneskoc.familytracker.ui.auth.AuthViewModel
 import com.eneskoc.familytracker.other.Constants.REQUEST_CODE_LOCATION_PERMISSION
 import com.eneskoc.familytracker.other.TrackingUtil
+import com.eneskoc.familytracker.servives.TrackingServices
 import com.google.android.gms.location.*
 import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.snackbar.Snackbar
 import com.vmadalin.easypermissions.EasyPermissions
 import com.vmadalin.easypermissions.dialogs.SettingsDialog
@@ -37,23 +47,8 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
     private val authViewModel by viewModels<AuthViewModel>()
     private var map: GoogleMap? = null
 
-    private lateinit var fusedLocationClient: FusedLocationProviderClient
-    private lateinit var locationCallback: LocationCallback
-    private lateinit var locationRequest: LocationRequest
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
-        createLocationRequest()
-        locationCallback = object : LocationCallback() {
-            override fun onLocationResult(p0: LocationResult) {
-                p0?.lastLocation?.let { location ->
-                    // Konum güncellemesi alındığında burası çalışır
-                    handleLocationUpdate(location)
-                }
-            }
-        }
-    }
+    private var isTracking = false
+    private lateinit var lastLocation: LatLng
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -70,10 +65,11 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
         binding.mapView.getMapAsync {
             map = it
         }
+        subscribeToObservers()
 
+        val topBarSwitch = binding.toolbar.findViewById<SwitchCompat>(R.id.top_app_bar_switch)
 
         binding.btnTest.setOnClickListener {
-            startLocationUpdates()
 //            val location = Location("providerName")
 //            location.latitude = 50.4935
 //            location.longitude = -122.1402
@@ -97,9 +93,61 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
         }
 
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner) {
-            authViewModel?.logout()
+            authViewModel.logout()
             findNavController().navigate(R.id.action_homeScreen_to_loginScreen)
         }
+
+        binding.toolbar.setNavigationOnClickListener {
+            authViewModel.logout()
+            findNavController().navigate(R.id.action_homeScreen_to_loginScreen)
+        }
+
+
+        topBarSwitch.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                isTracking = true
+                sendCommandToService(ACTION_START_OR_RESUME_SERVICE)
+            } else {
+                isTracking = false
+                sendCommandToService(ACTION_STOP_SERVICE)
+            }
+        }
+    }
+
+    fun sendDataToFireStore(location: LatLng) {
+        val fireStoreLocation = Location("providerName")
+        fireStoreLocation.latitude = location.latitude
+        fireStoreLocation.longitude = location.longitude
+        val batteryLevel = 50f
+
+        authViewModel.sendLocationData(fireStoreLocation, batteryLevel)
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            authViewModel.sendDataFlow.collect { resource ->
+                when (resource) {
+                    is Resource.Success -> {}
+                    is Resource.Failure -> {
+                        val exception = resource.exception
+                        Snackbar.make(requireView(), exception.message.toString(), Snackbar.LENGTH_LONG)
+                            .show()
+                    }
+                    is Resource.Loading -> {}
+                    else -> {}
+                }
+            }
+        }
+    }
+
+    private fun subscribeToObservers() {
+        TrackingServices.isTracking.observe(viewLifecycleOwner, Observer {
+            isTracking = it
+        })
+
+        TrackingServices.location.observe(viewLifecycleOwner, Observer {
+            lastLocation = it
+            println("LOCATION : ${lastLocation.latitude}, ${lastLocation.longitude}")
+            sendDataToFireStore(lastLocation)
+        })
     }
 
     private fun requestPermission() {
@@ -125,6 +173,7 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
             )
         }
     }
+
     override fun onPermissionsDenied(requestCode: Int, perms: List<String>) {
         if (EasyPermissions.somePermissionPermanentlyDenied(this, perms)) {
             SettingsDialog.Builder(requireContext()).build().show()
@@ -132,61 +181,22 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
             requestPermission()
         }
     }
+
+    private fun sendCommandToService(action: String) =
+        Intent(requireContext(), TrackingServices::class.java).also {
+            it.action = action
+            requireActivity().startService(it)
+        }
+
     override fun onPermissionsGranted(requestCode: Int, perms: List<String>) {}
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         EasyPermissions.onRequestPermissionsResult(requestCode, permissions, grantResults, true)
-    }
-
-    private fun createLocationRequest() {
-        locationRequest = LocationRequest.create().apply {
-            interval = 10000 // Konum güncellemesi için istenen aralık (ms)
-            fastestInterval = 5000 // Konum güncellemeleri için maksimum aralık (ms)
-            priority = LocationRequest.PRIORITY_HIGH_ACCURACY // Konum hassasiyeti
-        }
-        val builder = LocationSettingsRequest.Builder()
-            .addLocationRequest(locationRequest)
-        val client: SettingsClient = LocationServices.getSettingsClient(requireContext())
-        val task = client.checkLocationSettings(builder.build())
-
-        task.addOnSuccessListener {
-            // Ayarlar doğru olduğunda burası çalışır
-        }
-    }
-
-    @SuppressLint("MissingPermission")
-    private fun startLocationUpdates() {
-        if (TrackingUtil.hasLocationPermission(requireContext())) {
-            fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null)
-        }
-    }
-    private fun stopLocationUpdates() {
-        fusedLocationClient.removeLocationUpdates(locationCallback)
-    }
-    private fun handleLocationUpdate(location: Location) {
-        // Konum güncellemeleri burada kullanılabilir
-
-        val latitude = location.latitude
-        val longitude = location.longitude
-        println("Latitude: $latitude, Longitude: $longitude")
-
-        authViewModel.sendLocationData(location, 50f)
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            authViewModel.sendDataFlow.collect { resource ->
-                when (resource) {
-                    is Resource.Success -> {}
-                    is Resource.Failure -> {
-                        val exception = resource.exception
-                        //Snackbar.make(view, exception.message.toString(), Snackbar.LENGTH_LONG).show()
-                    }
-                    is Resource.Loading -> {}
-                    else -> {}
-                }
-            }
-        }
-
     }
 
     override fun onResume() {
@@ -202,7 +212,6 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
     override fun onStop() {
         super.onStop()
         binding.mapView.onStop()
-        stopLocationUpdates()
     }
 
     override fun onPause() {
