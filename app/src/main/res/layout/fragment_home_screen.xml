@@ -53,5 +53,16 @@
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
+    <EditText
+        android:id="@+id/testEditText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:ems="10"
+        android:inputType="textPersonName"
+        app:layout_constraintBottom_toTopOf="@+id/btnTest"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/mapView" />
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>

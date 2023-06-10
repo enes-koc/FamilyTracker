@@ -1,7 +1,6 @@
 package com.eneskoc.familytracker.ui
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.content.Intent
 
 import android.location.Location
@@ -10,12 +9,10 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Switch
 import androidx.activity.addCallback
 import androidx.appcompat.widget.SwitchCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Observer
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
@@ -28,10 +25,12 @@ import com.eneskoc.familytracker.ui.auth.AuthViewModel
 import com.eneskoc.familytracker.other.Constants.REQUEST_CODE_LOCATION_PERMISSION
 import com.eneskoc.familytracker.other.TrackingUtil
 import com.eneskoc.familytracker.servives.TrackingServices
-import com.google.android.gms.location.*
+import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
-import com.google.android.material.materialswitch.MaterialSwitch
+import com.google.android.gms.maps.model.LatLngBounds
+import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.material.snackbar.Snackbar
 import com.vmadalin.easypermissions.EasyPermissions
 import com.vmadalin.easypermissions.dialogs.SettingsDialog
@@ -49,13 +48,13 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
 
     private var isTracking = false
     private lateinit var lastLocation: LatLng
+    private var batteryLevel = 0
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
         _binding = FragmentHomeScreenBinding.inflate(inflater, container, false)
-        val view = binding.root
-        return view
+        return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -64,32 +63,43 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
         requestPermission()
         binding.mapView.getMapAsync {
             map = it
+            val locationList: List<LatLng> = listOf(
+                LatLng(37.183208, 33.211214),
+                LatLng(37.178992, 33.218786),
+                LatLng(37.188592, 33.218786)
+            )
+            updateMapMarker(locationList)
+            updateMapCamera(locationList)
         }
         subscribeToObservers()
 
         val topBarSwitch = binding.toolbar.findViewById<SwitchCompat>(R.id.top_app_bar_switch)
 
         binding.btnTest.setOnClickListener {
-//            val location = Location("providerName")
-//            location.latitude = 50.4935
-//            location.longitude = -122.1402
-//            val batteryLevel = 50f
-//
-//            authViewModel.sendLocationData(location, batteryLevel)
-//
-//            viewLifecycleOwner.lifecycleScope.launch {
-//                authViewModel.sendDataFlow.collect { resource ->
-//                    when (resource) {
-//                        is Resource.Success -> {}
-//                        is Resource.Failure -> {
-//                            val exception = resource.exception
-//                            Snackbar.make(view, exception.message.toString(), Snackbar.LENGTH_LONG).show()
-//                        }
-//                        is Resource.Loading -> {}
-//                        else -> {}
-//                    }
-//                }
-//            }
+            authViewModel.findUser(binding.testEditText.text.toString())
+
+            viewLifecycleOwner.lifecycleScope.launch {
+                authViewModel.findUserFlow.collect { resource ->
+                    when (resource) {
+                        is Resource.Success -> {
+                            println(resource.result.uid)
+                            println(resource.result.displayName)
+                            println(resource.result.username)
+                        }
+                        is Resource.Failure -> {
+                            val exception = resource.exception
+                            Snackbar.make(
+                                requireView(),
+                                exception.message.toString(),
+                                Snackbar.LENGTH_LONG
+                            )
+                                .show()
+                        }
+                        is Resource.Loading -> {}
+                        else -> {}
+                    }
+                }
+            }
         }
 
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner) {
@@ -105,30 +115,54 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
 
         topBarSwitch.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
-                isTracking = true
                 sendCommandToService(ACTION_START_OR_RESUME_SERVICE)
             } else {
-                isTracking = false
                 sendCommandToService(ACTION_STOP_SERVICE)
             }
         }
     }
 
-    fun sendDataToFireStore(location: LatLng) {
+    fun updateMapMarker(locationList: List<LatLng>) {
+        for (location in locationList) {
+            val markerOptions = MarkerOptions()
+                .position(location)
+                .title("Marker Header")
+                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
+            map?.addMarker(markerOptions)
+        }
+    }
+
+    fun updateMapCamera(locationList: List<LatLng>) {
+        val builder = LatLngBounds.Builder()
+        locationList.forEach {
+            builder.include(it)
+        }
+        val bounds = builder.build()
+        val padding = 100 // Markerları çevreleyen kenar boşluğu
+        val cameraUpdate = CameraUpdateFactory.newLatLngBounds(bounds, padding)
+        map?.moveCamera(cameraUpdate)
+    }
+
+    fun sendDataToFireStore(location: LatLng, batteryLevel: Int) {
         val fireStoreLocation = Location("providerName")
         fireStoreLocation.latitude = location.latitude
         fireStoreLocation.longitude = location.longitude
-        val batteryLevel = 50f
 
         authViewModel.sendLocationData(fireStoreLocation, batteryLevel)
 
         viewLifecycleOwner.lifecycleScope.launch {
             authViewModel.sendDataFlow.collect { resource ->
                 when (resource) {
-                    is Resource.Success -> {}
+                    is Resource.Success -> {
+
+                    }
                     is Resource.Failure -> {
                         val exception = resource.exception
-                        Snackbar.make(requireView(), exception.message.toString(), Snackbar.LENGTH_LONG)
+                        Snackbar.make(
+                            requireView(),
+                            exception.message.toString(),
+                            Snackbar.LENGTH_LONG
+                        )
                             .show()
                     }
                     is Resource.Loading -> {}
@@ -142,11 +176,15 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
         TrackingServices.isTracking.observe(viewLifecycleOwner, Observer {
             isTracking = it
         })
-
         TrackingServices.location.observe(viewLifecycleOwner, Observer {
             lastLocation = it
             println("LOCATION : ${lastLocation.latitude}, ${lastLocation.longitude}")
-            sendDataToFireStore(lastLocation)
+            sendDataToFireStore(lastLocation, batteryLevel)
+        })
+
+        TrackingServices.batteryLevel.observe(viewLifecycleOwner, Observer {
+            batteryLevel = it
+            println("BATTERY LEVEL : $batteryLevel")
         })
     }
 

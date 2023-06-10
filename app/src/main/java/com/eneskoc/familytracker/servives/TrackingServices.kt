@@ -7,6 +7,7 @@ import android.app.NotificationManager.IMPORTANCE_LOW
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.BatteryManager
 import android.os.Looper
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LifecycleService
@@ -31,16 +32,18 @@ class TrackingServices : LifecycleService() {
     var serviceKilled=false
 
     private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
+    private lateinit var batteryManager: BatteryManager
 
     companion object{
         val isTracking = MutableLiveData<Boolean>()
         var location =  MutableLiveData<LatLng>()
+        var batteryLevel = MutableLiveData<Int>()
     }
 
     override fun onCreate() {
         super.onCreate()
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
-
+        batteryManager = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
         isTracking.observe(this, Observer {
             updateLocationTracking(it)
         })
@@ -112,6 +115,7 @@ class TrackingServices : LifecycleService() {
                     val updatedLocation = LatLng(lastLocation.latitude, lastLocation.longitude)
                     location.value = updatedLocation
                 }
+                batteryLevel.value = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
             }
         }
     }

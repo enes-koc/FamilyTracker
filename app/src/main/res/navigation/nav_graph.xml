@@ -48,6 +48,9 @@
         <action
             android:id="@+id/action_signupScreen_to_loginScreen"
             app:destination="@id/loginScreen" />
+        <action
+            android:id="@+id/action_signupScreen_self"
+            app:destination="@id/signupScreen" />
     </fragment>
     <fragment
         android:id="@+id/addUserToTrackScreen"

@@ -40,10 +40,11 @@ class SignupScreen : Fragment() {
 
         binding.btnSignup.setOnClickListener {
             val name=binding.etName.text.toString()
+            val username=binding.etUsername.text.toString()
             val email = binding.etEmail.text.toString()
             val password = binding.etPassword.text.toString()
 
-            authViewModel.signup(name,email, password)
+            authViewModel.signup(name,username,email,password)
 
             viewLifecycleOwner.lifecycleScope.launch {
                 authViewModel.signupFlow.collectLatest { resource ->
@@ -55,10 +56,14 @@ class SignupScreen : Fragment() {
                         is Resource.Failure -> {
                             val exception = resource.exception
                             Snackbar.make(view, exception.message.toString(), Snackbar.LENGTH_LONG).show()
+                            findNavController().navigate(R.id.action_signupScreen_self)
                         }
                         is Resource.Loading -> {
+
                         }
-                        else -> {}
+                        else -> {
+
+                        }
                     }
                 }
             }
