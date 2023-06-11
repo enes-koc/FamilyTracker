@@ -30,6 +30,13 @@ class AuthViewModel @Inject constructor(
     private val _findUserFlow = MutableStateFlow<Resource<UserDataHolder>?>(null)
     val findUserFlow: StateFlow<Resource<UserDataHolder>?> = _findUserFlow
 
+    private val _sendFollowRequestFlow = MutableStateFlow<Resource<Unit>?>(null)
+    val sendFollowRequestFlow: StateFlow<Resource<Unit>?> = _sendFollowRequestFlow
+
+    private val _listenToFollowRequestsFlow = MutableStateFlow<Resource<List<UserDataHolder>>?>(null)
+    val listenToFollowRequestsFlow: StateFlow<Resource<List<UserDataHolder>>?> = _listenToFollowRequestsFlow
+
+
     val currentUser: FirebaseUser?
         get() = repository.currentUser
     
@@ -43,6 +50,18 @@ class AuthViewModel @Inject constructor(
         _findUserFlow.value = Resource.Loading
         val result = repository.findUser(username)
         _findUserFlow.value = result
+    }
+
+    fun listenToFollowRequests() = viewModelScope.launch {
+        _listenToFollowRequestsFlow.value = Resource.Loading
+        val result = repository.listenToFollowRequests()
+        _listenToFollowRequestsFlow.value = result
+    }
+
+    fun sendFollowRequest(uid: String) = viewModelScope.launch {
+        _sendFollowRequestFlow.value = Resource.Loading
+        val result = repository.sendFollowRequest(uid)
+        _sendFollowRequestFlow.value = result
     }
 
     fun sendLocationData(location: Location, batteryLevel:Int) = viewModelScope.launch {

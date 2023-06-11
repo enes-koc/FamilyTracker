@@ -46,11 +46,11 @@ class LoginScreen : Fragment() {
 
         binding.btnLogin.setOnClickListener {
 
-            //val email = binding.etEmail.text.toString()
-            //val password = binding.etPassword.text.toString()
+            val email = binding.etEmail.text.toString()
+            val password = binding.etPassword.text.toString()
 
-            val email = "enes@gmail.com"
-            val password = "1234567"
+//            val email = "enes@gmail.com"
+//            val password = "1234567"
 
             authViewModel.login(email, password)
 

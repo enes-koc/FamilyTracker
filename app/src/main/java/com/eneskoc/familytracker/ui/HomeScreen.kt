@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import androidx.activity.addCallback
 import androidx.appcompat.widget.SwitchCompat
 import androidx.fragment.app.Fragment
@@ -74,33 +75,7 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
         subscribeToObservers()
 
         val topBarSwitch = binding.toolbar.findViewById<SwitchCompat>(R.id.top_app_bar_switch)
-
-        binding.btnTest.setOnClickListener {
-            authViewModel.findUser(binding.testEditText.text.toString())
-
-            viewLifecycleOwner.lifecycleScope.launch {
-                authViewModel.findUserFlow.collect { resource ->
-                    when (resource) {
-                        is Resource.Success -> {
-                            println(resource.result.uid)
-                            println(resource.result.displayName)
-                            println(resource.result.username)
-                        }
-                        is Resource.Failure -> {
-                            val exception = resource.exception
-                            Snackbar.make(
-                                requireView(),
-                                exception.message.toString(),
-                                Snackbar.LENGTH_LONG
-                            )
-                                .show()
-                        }
-                        is Resource.Loading -> {}
-                        else -> {}
-                    }
-                }
-            }
-        }
+        val topBarSearch = binding.toolbar.findViewById<ImageView>(R.id.top_app_bar_search)
 
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner) {
             authViewModel.logout()
@@ -112,12 +87,42 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
             findNavController().navigate(R.id.action_homeScreen_to_loginScreen)
         }
 
+        topBarSearch.setOnClickListener {
+            val searchPopup = UserSearchScreen()
+            searchPopup.show(requireActivity().supportFragmentManager, "SearchDialog")
+        }
 
         topBarSwitch.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
                 sendCommandToService(ACTION_START_OR_RESUME_SERVICE)
             } else {
                 sendCommandToService(ACTION_STOP_SERVICE)
+            }
+        }
+
+        binding.btnTest.setOnClickListener {
+            authViewModel.listenToFollowRequests()
+
+            viewLifecycleOwner.lifecycleScope.launch {
+                authViewModel.listenToFollowRequestsFlow.collect { resource ->
+                    when (resource) {
+                        is Resource.Success -> {
+                            resource.result.forEach {
+                                println(it.displayName)
+                            }
+                        }
+                        is Resource.Failure -> {
+                            val exception = resource.exception
+                            Snackbar.make(
+                                requireView(),
+                                exception.message.toString(),
+                                Snackbar.LENGTH_LONG
+                            ).show()
+                        }
+                        is Resource.Loading -> {}
+                        else -> {}
+                    }
+                }
             }
         }
     }
@@ -162,8 +167,7 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
                             requireView(),
                             exception.message.toString(),
                             Snackbar.LENGTH_LONG
-                        )
-                            .show()
+                        ).show()
                     }
                     is Resource.Loading -> {}
                     else -> {}

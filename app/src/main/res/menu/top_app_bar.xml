@@ -5,5 +5,5 @@
     <item
         android:title="Share Location"
         app:actionLayout="@layout/switch_item"
-        app:showAsAction="ifRoom"/>
+        app:showAsAction="always"/>
 </menu>
