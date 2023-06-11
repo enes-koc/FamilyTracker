@@ -76,6 +76,7 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
 
         val topBarSwitch = binding.toolbar.findViewById<SwitchCompat>(R.id.top_app_bar_switch)
         val topBarSearch = binding.toolbar.findViewById<ImageView>(R.id.top_app_bar_search)
+        val topBarNotification = binding.toolbar.findViewById<ImageView>(R.id.top_app_bar_notification)
 
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner) {
             authViewModel.logout()
@@ -87,8 +88,13 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
             findNavController().navigate(R.id.action_homeScreen_to_loginScreen)
         }
 
+        topBarNotification.setOnClickListener {
+            val notificationPopup = NotificationDialogFragmentScreen()
+            notificationPopup.show(requireActivity().supportFragmentManager, "NotificationDialog")
+        }
+
         topBarSearch.setOnClickListener {
-            val searchPopup = UserSearchScreen()
+            val searchPopup = UserSearchDialogFragmentScreen()
             searchPopup.show(requireActivity().supportFragmentManager, "SearchDialog")
         }
 
@@ -101,29 +107,29 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
         }
 
         binding.btnTest.setOnClickListener {
-            authViewModel.listenToFollowRequests()
-
-            viewLifecycleOwner.lifecycleScope.launch {
-                authViewModel.listenToFollowRequestsFlow.collect { resource ->
-                    when (resource) {
-                        is Resource.Success -> {
-                            resource.result.forEach {
-                                println(it.displayName)
-                            }
-                        }
-                        is Resource.Failure -> {
-                            val exception = resource.exception
-                            Snackbar.make(
-                                requireView(),
-                                exception.message.toString(),
-                                Snackbar.LENGTH_LONG
-                            ).show()
-                        }
-                        is Resource.Loading -> {}
-                        else -> {}
-                    }
-                }
-            }
+//            authViewModel.listenToFollowRequests()
+//
+//            viewLifecycleOwner.lifecycleScope.launch {
+//                authViewModel.listenToFollowRequestsFlow.collect { resource ->
+//                    when (resource) {
+//                        is Resource.Success -> {
+//                            resource.result.forEach {
+//                                println(it.displayName)
+//                            }
+//                        }
+//                        is Resource.Failure -> {
+//                            val exception = resource.exception
+//                            Snackbar.make(
+//                                requireView(),
+//                                exception.message.toString(),
+//                                Snackbar.LENGTH_LONG
+//                            ).show()
+//                        }
+//                        is Resource.Loading -> {}
+//                        else -> {}
+//                    }
+//                }
+//            }
         }
     }
 

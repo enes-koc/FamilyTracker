@@ -4,6 +4,6 @@
 
     <item
         android:title="Share Location"
-        app:actionLayout="@layout/switch_item"
+        app:actionLayout="@layout/app_bar_items"
         app:showAsAction="always"/>
 </menu>
