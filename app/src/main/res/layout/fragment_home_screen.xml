@@ -37,23 +37,48 @@
         android:layout_width="match_parent"
         android:layout_height="330dp" />
 
-        <com.google.android.material.tabs.TabLayout
-            android:layout_width="match_parent"
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tabLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:layout_anchor="@id/mapView"
+        app:layout_anchorGravity="top">
+
+        <com.google.android.material.tabs.TabItem
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            app:layout_constraintTop_toBottomOf="@+id/mapView"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent">
+            android:text="Following" />
 
-            <com.google.android.material.tabs.TabItem
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Followers" />
+        <com.google.android.material.tabs.TabItem
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Followers" />
+    </com.google.android.material.tabs.TabLayout>
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerViewFollowing"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:paddingVertical="15dp"
+        android:visibility="visible"
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 
-            <com.google.android.material.tabs.TabItem
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Following" />
-        </com.google.android.material.tabs.TabLayout>
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerViewFollowers"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:paddingVertical="15dp"
+        android:visibility="gone"
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 
+    <TextView
+        android:id="@+id/tvResultMessage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:layout_gravity="center"
+        android:gravity="center"
+        android:layout_margin="20dp"
+        android:textSize="18sp"
+        android:visibility="gone"/>
 
 </LinearLayout>

@@ -19,6 +19,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.eneskoc.familytracker.R
 import com.eneskoc.familytracker.data.Resource
+import com.eneskoc.familytracker.data.models.UserDataHolder
 import com.eneskoc.familytracker.databinding.FragmentHomeScreenBinding
 import com.eneskoc.familytracker.other.Constants.ACTION_START_OR_RESUME_SERVICE
 import com.eneskoc.familytracker.other.Constants.ACTION_STOP_SERVICE
@@ -26,6 +27,7 @@ import com.eneskoc.familytracker.ui.auth.AuthViewModel
 import com.eneskoc.familytracker.other.Constants.REQUEST_CODE_LOCATION_PERMISSION
 import com.eneskoc.familytracker.other.TrackingUtil
 import com.eneskoc.familytracker.servives.TrackingServices
+import com.eneskoc.familytracker.ui.notification.*
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
@@ -33,6 +35,7 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.material.snackbar.Snackbar
+import com.google.android.material.tabs.TabLayout
 import com.vmadalin.easypermissions.EasyPermissions
 import com.vmadalin.easypermissions.dialogs.SettingsDialog
 import dagger.hilt.android.AndroidEntryPoint
@@ -51,6 +54,9 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
     private lateinit var lastLocation: LatLng
     private var batteryLevel = 0
 
+    private lateinit var followingAdapter: HomeScreenFollowingAdapter
+    private lateinit var followersAdapter: HomeScreenFollowersAdapter
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
@@ -64,7 +70,18 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
         requestPermission()
         subscribeToObservers()
 
-        binding.toolbar.title = authViewModel.currentUser?.displayName?:"Empty"
+        followingAdapter = HomeScreenFollowingAdapter(emptyList())
+        //followingAdapter.setOnItemClickListener(this)
+        binding.recyclerViewFollowing.adapter = followingAdapter
+
+        followersAdapter = HomeScreenFollowersAdapter(emptyList())
+        //followersAdapter.setOnItemClickListener(this)
+        binding.recyclerViewFollowers.adapter = followersAdapter
+
+        listenFollowingUser()
+
+
+        binding.toolbar.title = authViewModel.currentUser?.displayName ?: "Empty"
 
         binding.mapView.getMapAsync {
             map = it
@@ -80,7 +97,8 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
 
         val topBarSwitch = binding.toolbar.findViewById<SwitchCompat>(R.id.top_app_bar_switch)
         val topBarSearch = binding.toolbar.findViewById<ImageView>(R.id.top_app_bar_search)
-        val topBarNotification = binding.toolbar.findViewById<ImageView>(R.id.top_app_bar_notification)
+        val topBarNotification =
+            binding.toolbar.findViewById<ImageView>(R.id.top_app_bar_notification)
 
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner) {
             authViewModel.logout()
@@ -107,6 +125,96 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
                 sendCommandToService(ACTION_START_OR_RESUME_SERVICE)
             } else {
                 sendCommandToService(ACTION_STOP_SERVICE)
+            }
+        }
+
+        binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab) {
+                when (tab.position) {
+                    0 -> {
+                        //Following
+                        binding.recyclerViewFollowing.visibility = View.VISIBLE
+                        binding.recyclerViewFollowers.visibility = View.GONE
+                        listenFollowingUser()
+                    }
+                    1 -> {
+                        //Followers
+                        binding.recyclerViewFollowing.visibility = View.GONE
+                        binding.recyclerViewFollowers.visibility = View.VISIBLE
+                        listenFollowersUser()
+                    }
+                }
+            }
+
+            override fun onTabUnselected(tab: TabLayout.Tab) {}
+            override fun onTabReselected(tab: TabLayout.Tab) {}
+        })
+    }
+
+    fun listenFollowingUser() {
+        authViewModel.listenToFollowingUser()
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            authViewModel.listenToFollowingUserFlow.collect { resource ->
+                when (resource) {
+                    is Resource.Success -> {
+                        followingAdapter.userDataList = resource.result
+                        followingAdapter.notifyDataSetChanged()
+
+                        if (resource.result.isEmpty()) {
+                            binding.tvResultMessage.visibility = View.VISIBLE
+                            binding.recyclerViewFollowing.visibility = View.GONE
+                            binding.tvResultMessage.text="You are not following any users. You can search for users to follow."
+
+                        } else {
+                            binding.tvResultMessage.visibility = View.GONE
+                            binding.recyclerViewFollowing.visibility = View.VISIBLE
+                        }
+                    }
+                    is Resource.Failure -> {
+                        val exception = resource.exception
+                        Snackbar.make(
+                            requireView(),
+                            exception.message.toString(),
+                            Snackbar.LENGTH_LONG
+                        ).show()
+                    }
+                    is Resource.Loading -> {}
+                    else -> {}
+                }
+            }
+        }
+    }
+    fun listenFollowersUser() {
+        authViewModel.listenToFollowersUser()
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            authViewModel.listenToFollowersUserFlow.collect { resource ->
+                when (resource) {
+                    is Resource.Success -> {
+                        followersAdapter.userDataList = resource.result
+                        followersAdapter.notifyDataSetChanged()
+
+                        if (resource.result.isEmpty()) {
+                            binding.tvResultMessage.visibility = View.VISIBLE
+                            binding.recyclerViewFollowers.visibility = View.GONE
+                            binding.tvResultMessage.text="There are no users following you."
+                        } else {
+                            binding.tvResultMessage.visibility = View.GONE
+                            binding.recyclerViewFollowers.visibility = View.VISIBLE
+                        }
+                    }
+                    is Resource.Failure -> {
+                        val exception = resource.exception
+                        Snackbar.make(
+                            requireView(),
+                            exception.message.toString(),
+                            Snackbar.LENGTH_LONG
+                        ).show()
+                    }
+                    is Resource.Loading -> {}
+                    else -> {}
+                }
             }
         }
     }
@@ -216,11 +324,7 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
 
     override fun onPermissionsGranted(requestCode: Int, perms: List<String>) {}
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         EasyPermissions.onRequestPermissionsResult(requestCode, permissions, grantResults, true)
     }

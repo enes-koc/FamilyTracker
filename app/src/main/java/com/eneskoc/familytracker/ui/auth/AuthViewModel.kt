@@ -36,11 +36,17 @@ class AuthViewModel @Inject constructor(
     private val _listenToFollowRequestsFlow = MutableStateFlow<Resource<List<UserDataHolder>>?>(null)
     val listenToFollowRequestsFlow: StateFlow<Resource<List<UserDataHolder>>?> = _listenToFollowRequestsFlow
 
-    private val _acceptFollowRequest = MutableStateFlow<Resource<Unit>?>(null)
-    val acceptFollowRequest: StateFlow<Resource<Unit>?> = _acceptFollowRequest
+    private val _acceptFollowRequestFlow = MutableStateFlow<Resource<Unit>?>(null)
+    val acceptFollowRequestFlow: StateFlow<Resource<Unit>?> = _acceptFollowRequestFlow
 
-    private val _rejectFollowRequest = MutableStateFlow<Resource<Unit>?>(null)
-    val rejectFollowRequest: StateFlow<Resource<Unit>?> = _rejectFollowRequest
+    private val _rejectFollowRequestFlow = MutableStateFlow<Resource<Unit>?>(null)
+    val rejectFollowRequestFlow: StateFlow<Resource<Unit>?> = _rejectFollowRequestFlow
+
+    private val _listenToFollowingUserFlow = MutableStateFlow<Resource<List<UserDataHolder>>?>(null)
+    val listenToFollowingUserFlow: StateFlow<Resource<List<UserDataHolder>>?> = _listenToFollowingUserFlow
+
+    private val _listenToFollowersUserFlow = MutableStateFlow<Resource<List<UserDataHolder>>?>(null)
+    val listenToFollowersUserFlow: StateFlow<Resource<List<UserDataHolder>>?> = _listenToFollowersUserFlow
 
 
     val currentUser: FirebaseUser?
@@ -53,15 +59,27 @@ class AuthViewModel @Inject constructor(
     }
 
     fun acceptFollowRequest(senderId: String) = viewModelScope.launch {
-        _acceptFollowRequest.value = Resource.Loading
+        _acceptFollowRequestFlow.value = Resource.Loading
         val result = repository.acceptFollowRequest(senderId)
-        _acceptFollowRequest.value = result
+        _acceptFollowRequestFlow.value = result
     }
 
     fun rejectFollowRequest(senderId: String) = viewModelScope.launch {
-        _rejectFollowRequest.value = Resource.Loading
+        _rejectFollowRequestFlow.value = Resource.Loading
         val result = repository.rejectFollowRequest(senderId)
-        _rejectFollowRequest.value = result
+        _rejectFollowRequestFlow.value = result
+    }
+
+    fun listenToFollowingUser()= viewModelScope.launch {
+        _listenToFollowingUserFlow.value = Resource.Loading
+        val result = repository.listenToFollowingUser()
+        _listenToFollowingUserFlow.value = result
+    }
+
+    fun listenToFollowersUser()= viewModelScope.launch{
+        _listenToFollowersUserFlow.value = Resource.Loading
+        val result = repository.listenToFollowersUser()
+        _listenToFollowersUserFlow.value = result
     }
 
     fun findUser(username:String) = viewModelScope.launch {

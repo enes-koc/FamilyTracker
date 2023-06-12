@@ -128,7 +128,7 @@ class TrackingServices : LifecycleService() {
         val notificationBuilder = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setAutoCancel(false)
             .setOngoing(true) //Block swipe
-            .setSmallIcon(com.google.android.material.R.drawable.ic_arrow_back_black_24)
+            .setSmallIcon(com.google.android.material.R.drawable.mtrl_checkbox_button_icon_indeterminate_checked)
             .setContentTitle("Family Tracker")
             .setContentText("Your family follow you and know you're safe")
             .setContentIntent(getMainActivityPendingIntent())

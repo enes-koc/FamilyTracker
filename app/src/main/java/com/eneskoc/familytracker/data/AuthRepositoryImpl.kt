@@ -4,8 +4,6 @@ import android.location.Location
 import com.eneskoc.familytracker.data.models.UserDataHolder
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
-import com.google.firebase.auth.UserProfileChangeRequest
-import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.GeoPoint
 import kotlinx.coroutines.tasks.await
@@ -107,7 +105,7 @@ class AuthRepositoryImpl @Inject constructor(
             val documentSnapshot = querySnapshot.documents.first()
             val uid = documentSnapshot.id
             val displayName = documentSnapshot.getString("displayName")
-            val userDataHolder = UserDataHolder(uid, displayName!!, username)
+            val userDataHolder = UserDataHolder(uid, null,displayName!!, null,username!!)
 
             Resource.Success(userDataHolder)
         } catch (e: Exception) {
@@ -159,7 +157,7 @@ class AuthRepositoryImpl @Inject constructor(
                     val uid = queryUserSnapshot.id
                     val displayName = queryUserSnapshot.getString("displayName")
                     val username = queryUserSnapshot.getString("username")
-                    val userDataHolder = UserDataHolder(uid, displayName!!, username!!)
+                    val userDataHolder = UserDataHolder(uid, null,displayName!!, null,username!!)
 
                     userDataList.add(userDataHolder)
                 }
@@ -214,6 +212,79 @@ class AuthRepositoryImpl @Inject constructor(
                 }
             }
             Resource.Success(Unit)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Resource.Failure(e)
+        }
+    }
+
+    override suspend fun listenToFollowingUser(): Resource<List<UserDataHolder>> {
+        return try {
+            val currentUserId = currentUser?.uid
+            val firestore = firebaseFirestore
+            val userDataList: MutableList<UserDataHolder> = mutableListOf()
+
+            val requestsRef = firestore.collection("requests")
+            val requestsQuery = requestsRef.whereEqualTo("senderId", currentUserId)
+
+            val querySnapshot = requestsQuery.get().await()
+            for (documentSnapshot in querySnapshot.documents) {
+                val requestStatus = documentSnapshot.getString("status")
+                if (requestStatus == "accepted") {
+                    val reveiverId = documentSnapshot.getString("receiverId")
+
+                    val queryUserSnapshot = firestore.collection("users")
+                        .document(reveiverId!!)
+                        .get()
+                        .await()
+
+                    val uid = queryUserSnapshot.id
+                    val displayName = queryUserSnapshot.getString("displayName")
+                    val username = queryUserSnapshot.getString("username")
+                    val batteryLevel = queryUserSnapshot.getLong("batteryLevel").toString()
+                    val userDataHolder = UserDataHolder(uid, batteryLevel,displayName!!, null,username!!)
+
+                    userDataList.add(userDataHolder)
+                }
+            }
+
+            Resource.Success(userDataList)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Resource.Failure(e)
+        }
+    }
+
+    override suspend fun listenToFollowersUser(): Resource<List<UserDataHolder>> {
+        return try {
+            val currentUserId = currentUser?.uid
+            val firestore = firebaseFirestore
+            val userDataList: MutableList<UserDataHolder> = mutableListOf()
+
+            val requestsRef = firestore.collection("requests")
+            val requestsQuery = requestsRef.whereEqualTo("receiverId", currentUserId)
+
+            val querySnapshot = requestsQuery.get().await()
+            for (documentSnapshot in querySnapshot.documents) {
+                val requestStatus = documentSnapshot.getString("status")
+                if (requestStatus == "accepted") {
+                    val senderId = documentSnapshot.getString("senderId")
+
+                    val queryUserSnapshot = firestore.collection("users")
+                        .document(senderId!!)
+                        .get()
+                        .await()
+
+                    val uid = queryUserSnapshot.id
+                    val displayName = queryUserSnapshot.getString("displayName")
+                    val username = queryUserSnapshot.getString("username")
+                    val userDataHolder = UserDataHolder(uid, null,displayName!!, null,username!!)
+
+                    userDataList.add(userDataHolder)
+                }
+            }
+
+            Resource.Success(userDataList)
         } catch (e: Exception) {
             e.printStackTrace()
             Resource.Failure(e)

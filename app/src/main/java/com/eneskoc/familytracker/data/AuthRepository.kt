@@ -15,4 +15,6 @@ interface AuthRepository {
     suspend fun acceptFollowRequest(senderId: String):Resource<Unit>
     suspend fun rejectFollowRequest(senderId: String):Resource<Unit>
     suspend fun listenToFollowRequests():Resource<List<UserDataHolder>>
+    suspend fun listenToFollowingUser():Resource<List<UserDataHolder>>
+    suspend fun listenToFollowersUser():Resource<List<UserDataHolder>>
 }

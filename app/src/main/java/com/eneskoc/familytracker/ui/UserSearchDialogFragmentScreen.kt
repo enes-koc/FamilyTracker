@@ -71,7 +71,7 @@ class UserSearchDialogFragmentScreen : DialogFragment() {
                         authViewModel.findUserFlow.collect { resource ->
                             when (resource) {
                                 is Resource.Success -> {
-                                    userData= UserDataHolder(resource.result.uid,resource.result.displayName,resource.result.username)
+                                    userData= UserDataHolder(resource.result.uid,null,resource.result.displayName,null,resource.result.username)
 
                                     binding.layoutSearchUser.visibility=View.VISIBLE
                                     binding.tvResultMessage.visibility=View.GONE
@@ -97,7 +97,7 @@ class UserSearchDialogFragmentScreen : DialogFragment() {
 
 
         binding.btnRequest.setOnClickListener {
-            authViewModel.sendFollowRequest(userData.uid)
+            userData.uid?.let { it1 -> authViewModel.sendFollowRequest(it1) }
 
             viewLifecycleOwner.lifecycleScope.launch {
                 authViewModel.sendFollowRequestFlow.collect { resource ->
