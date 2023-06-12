@@ -12,5 +12,7 @@ interface AuthRepository {
     suspend fun sendLocationData(location:Location,batteryLevel:Int):Resource<Unit>
     suspend fun findUser(username:String):Resource<UserDataHolder>
     suspend fun sendFollowRequest(uid: String):Resource<Unit>
+    suspend fun acceptFollowRequest(senderId: String):Resource<Unit>
+    suspend fun rejectFollowRequest(senderId: String):Resource<Unit>
     suspend fun listenToFollowRequests():Resource<List<UserDataHolder>>
 }

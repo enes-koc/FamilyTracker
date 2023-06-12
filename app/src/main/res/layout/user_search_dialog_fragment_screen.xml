@@ -4,8 +4,17 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:layout_gravity="center"
-    android:background="#F8F8F8"
-    android:paddingVertical="20dp">
+    android:background="#F8F8F8">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textStyle="bold"
+        android:text="Search"
+        android:paddingStart="10dp"
+        android:paddingVertical="3dp"
+        android:textSize="20sp"
+        android:background="#EAE9E9"/>
 
     <EditText
         android:id="@+id/tvSearch"
@@ -15,6 +24,7 @@
         android:drawablePadding="8dp"
         android:padding="15dp"
         android:layout_marginHorizontal="30dp"
+        android:layout_marginVertical="10dp"
         android:hint="Search user with username"
         android:textColor="@color/black"
         android:textSize="16sp"

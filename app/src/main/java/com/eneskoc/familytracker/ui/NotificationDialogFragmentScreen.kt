@@ -20,13 +20,13 @@ import kotlinx.coroutines.launch
 
 
 @AndroidEntryPoint
-class NotificationDialogFragmentScreen : DialogFragment() , NotificationAdapterOnItemClickListener{
+class NotificationDialogFragmentScreen : DialogFragment(), NotificationAdapterOnItemClickListener {
 
     private var _binding: NotificationDialogFragmentScreenBinding? = null
     private val binding get() = _binding!!
 
     private val authViewModel by viewModels<AuthViewModel>()
-    private lateinit var userDataList: List<UserDataHolder>
+    private lateinit var adapter: NotificationDialogFragmentScreenAdapter
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val dialog = super.onCreateDialog(savedInstanceState)
@@ -37,7 +37,6 @@ class NotificationDialogFragmentScreen : DialogFragment() , NotificationAdapterO
         layoutParams?.width = WindowManager.LayoutParams.MATCH_PARENT
         layoutParams?.height = WindowManager.LayoutParams.WRAP_CONTENT
         window?.attributes = layoutParams
-
         return dialog
     }
 
@@ -53,16 +52,20 @@ class NotificationDialogFragmentScreen : DialogFragment() , NotificationAdapterO
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        authViewModel.listenToFollowRequests()
+        adapter = NotificationDialogFragmentScreenAdapter(emptyList())
+        adapter.setOnItemClickListener(this)
+        binding.recyclerViewNotification.adapter = adapter
+        listenFollowRequest()
+    }
 
+    override fun onAcceptButtonClicked(user: UserDataHolder) {
+
+        authViewModel.acceptFollowRequest(user.uid)
         viewLifecycleOwner.lifecycleScope.launch {
-            authViewModel.listenToFollowRequestsFlow.collect { resource ->
+            authViewModel.acceptFollowRequest.collect { resource ->
                 when (resource) {
                     is Resource.Success -> {
-                        userDataList=resource.result
-                        val notificationDialogFragmentAdapter = NotificationDialogFragmentScreenAdapter(userDataList)
-                        notificationDialogFragmentAdapter.setOnItemClickListener(this@NotificationDialogFragmentScreen)
-                        binding.recyclerViewNotification.adapter=notificationDialogFragmentAdapter
+                        listenFollowRequest()
                     }
                     is Resource.Failure -> {
                         val exception = resource.exception
@@ -79,12 +82,61 @@ class NotificationDialogFragmentScreen : DialogFragment() , NotificationAdapterO
         }
     }
 
-    override fun onAcceptButtonClicked(user: UserDataHolder) {
-        println("Accept = ${user.displayName}")
+    override fun onRejectButtonClicked(user: UserDataHolder) {
+        authViewModel.rejectFollowRequest(user.uid)
+        viewLifecycleOwner.lifecycleScope.launch {
+            authViewModel.rejectFollowRequest.collect { resource ->
+                when (resource) {
+                    is Resource.Success -> {
+                        listenFollowRequest()
+                    }
+                    is Resource.Failure -> {
+                        val exception = resource.exception
+                        Snackbar.make(
+                            requireView(),
+                            exception.message.toString(),
+                            Snackbar.LENGTH_LONG
+                        ).show()
+                    }
+                    is Resource.Loading -> {}
+                    else -> {}
+                }
+            }
+        }
     }
 
-    override fun onRejectButtonClicked(user: UserDataHolder) {
-        println("Reject = ${user.displayName}")
+    fun listenFollowRequest() {
+        authViewModel.listenToFollowRequests()
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            authViewModel.listenToFollowRequestsFlow.collect { resource ->
+                when (resource) {
+                    is Resource.Success -> {
+                        adapter.userDataList = resource.result
+                        adapter.notifyDataSetChanged()
+
+                        if (resource.result.isEmpty()) {
+                            binding.tvResultMessage.visibility = View.VISIBLE
+                            binding.recyclerViewNotification.visibility = View.GONE
+
+                        } else {
+                            binding.tvResultMessage.visibility = View.GONE
+                            binding.recyclerViewNotification.visibility = View.VISIBLE
+                        }
+                    }
+                    is Resource.Failure -> {
+                        val exception = resource.exception
+                        Snackbar.make(
+                            requireView(),
+                            exception.message.toString(),
+                            Snackbar.LENGTH_LONG
+                        ).show()
+                    }
+                    is Resource.Loading -> {}
+                    else -> {}
+                }
+            }
+        }
     }
 
 }

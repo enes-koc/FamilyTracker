@@ -62,6 +62,10 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
         super.onViewCreated(view, savedInstanceState)
         binding.mapView.onCreate(savedInstanceState)
         requestPermission()
+        subscribeToObservers()
+
+        binding.toolbar.title = authViewModel.currentUser?.displayName?:"Empty"
+
         binding.mapView.getMapAsync {
             map = it
             val locationList: List<LatLng> = listOf(
@@ -72,7 +76,7 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
             updateMapMarker(locationList)
             updateMapCamera(locationList)
         }
-        subscribeToObservers()
+
 
         val topBarSwitch = binding.toolbar.findViewById<SwitchCompat>(R.id.top_app_bar_switch)
         val topBarSearch = binding.toolbar.findViewById<ImageView>(R.id.top_app_bar_search)
@@ -104,32 +108,6 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
             } else {
                 sendCommandToService(ACTION_STOP_SERVICE)
             }
-        }
-
-        binding.btnTest.setOnClickListener {
-//            authViewModel.listenToFollowRequests()
-//
-//            viewLifecycleOwner.lifecycleScope.launch {
-//                authViewModel.listenToFollowRequestsFlow.collect { resource ->
-//                    when (resource) {
-//                        is Resource.Success -> {
-//                            resource.result.forEach {
-//                                println(it.displayName)
-//                            }
-//                        }
-//                        is Resource.Failure -> {
-//                            val exception = resource.exception
-//                            Snackbar.make(
-//                                requireView(),
-//                                exception.message.toString(),
-//                                Snackbar.LENGTH_LONG
-//                            ).show()
-//                        }
-//                        is Resource.Loading -> {}
-//                        else -> {}
-//                    }
-//                }
-//            }
         }
     }
 

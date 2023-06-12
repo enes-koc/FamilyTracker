@@ -15,7 +15,8 @@ class AuthRepositoryImpl @Inject constructor(
     private val firebaseAuth: FirebaseAuth,
     private val firebaseFirestore: FirebaseFirestore
 ) : AuthRepository {
-    override val currentUser: FirebaseUser? get() = firebaseAuth.currentUser
+    override val currentUser: FirebaseUser?
+        get() = firebaseAuth.currentUser
 
 
     override suspend fun login(email: String, password: String): Resource<FirebaseUser> {
@@ -41,7 +42,7 @@ class AuthRepositoryImpl @Inject constructor(
             println(usernameQuery)
             if (usernameQuery.exists()) {
                 return Resource.Failure(Exception("Username is already taken."))
-            }else{
+            } else {
                 val result = firebaseAuth.createUserWithEmailAndPassword(email, password).await()
 
                 result.user?.uid?.let { uid ->
@@ -49,11 +50,13 @@ class AuthRepositoryImpl @Inject constructor(
                     val usernameDocument = firestore.collection("usernames").document(username)
 
                     firestore.runBatch { batch ->
-                        batch.set(userDocument, hashMapOf(
-                            "location" to GeoPoint(0.0, 0.0),
-                            "batteryLevel" to 0,
-                            "username" to username,
-                            "displayName" to name)
+                        batch.set(
+                            userDocument, hashMapOf(
+                                "location" to GeoPoint(0.0, 0.0),
+                                "batteryLevel" to 0,
+                                "username" to username,
+                                "displayName" to name
+                            )
                         )
                         batch.set(usernameDocument, hashMapOf("uid" to uid))
                     }.await()
@@ -76,7 +79,7 @@ class AuthRepositoryImpl @Inject constructor(
             val firestore = firebaseFirestore
 
             val userRef = firestore.collection("users").document(userId!!)
-            val updateData = mapOf(
+            val updateData = hashMapOf<String, Any>(
                 "location" to GeoPoint(location.latitude, location.longitude),
                 "batteryLevel" to batteryLevel
             )
@@ -163,6 +166,54 @@ class AuthRepositoryImpl @Inject constructor(
             }
 
             Resource.Success(userDataList)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Resource.Failure(e)
+        }
+    }
+
+    override suspend fun acceptFollowRequest(senderId: String): Resource<Unit> {
+        return try {
+            val currentUserId = currentUser?.uid
+            val firestore = firebaseFirestore
+
+            val requestsRef = firestore.collection("requests")
+            val requestsQuery = requestsRef.whereEqualTo("receiverId", currentUserId)
+                .whereEqualTo("senderId", senderId)
+            val querySnapshot = requestsQuery.get().await()
+            for (documentSnapshot in querySnapshot.documents) {
+                val requestStatus = documentSnapshot.getString("status")
+                if (requestStatus == "pending") {
+                    val documentRef = documentSnapshot.reference
+                    val updateData = mutableMapOf<String, Any>("status" to "accepted")
+                    documentRef.update(updateData).await()
+                }
+            }
+
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Resource.Failure(e)
+        }
+    }
+
+    override suspend fun rejectFollowRequest(senderId: String): Resource<Unit> {
+        return try {
+            val currentUserId = currentUser?.uid
+            val firestore = firebaseFirestore
+
+            val requestsRef = firestore.collection("requests")
+            val requestsQuery = requestsRef.whereEqualTo("receiverId", currentUserId)
+                .whereEqualTo("senderId", senderId)
+            val querySnapshot = requestsQuery.get().await()
+            for (documentSnapshot in querySnapshot.documents) {
+                val requestStatus = documentSnapshot.getString("status")
+                if (requestStatus == "pending") {
+                    val documentRef = documentSnapshot.reference
+                    documentRef.delete().await()
+                }
+            }
+            Resource.Success(Unit)
         } catch (e: Exception) {
             e.printStackTrace()
             Resource.Failure(e)

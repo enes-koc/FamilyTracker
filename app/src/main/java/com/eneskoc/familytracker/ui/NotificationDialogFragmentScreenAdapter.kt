@@ -1,12 +1,13 @@
 package com.eneskoc.familytracker.ui
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.eneskoc.familytracker.data.models.UserDataHolder
 import com.eneskoc.familytracker.databinding.RecyclerViewNotificationItemBinding
 
-class NotificationDialogFragmentScreenAdapter(private val userDataList: List<UserDataHolder>) :
+class NotificationDialogFragmentScreenAdapter(var userDataList: List<UserDataHolder>) :
     RecyclerView.Adapter<NotificationDialogFragmentScreenAdapter.UserNotificationDataHolder>() {
 
     private var itemClickListener: NotificationAdapterOnItemClickListener? = null
@@ -25,6 +26,7 @@ class NotificationDialogFragmentScreenAdapter(private val userDataList: List<Use
     }
 
     override fun onBindViewHolder(holder: UserNotificationDataHolder, position: Int) {
+
         val user = userDataList[position]
         holder.binding.tvUserDisplayName.text = user.displayName
         holder.binding.tvUsername.text = user.username
@@ -36,7 +38,6 @@ class NotificationDialogFragmentScreenAdapter(private val userDataList: List<Use
         holder.binding.btnReject.setOnClickListener {
             itemClickListener?.onRejectButtonClicked(user)
         }
-
     }
 
     override fun getItemCount(): Int {
