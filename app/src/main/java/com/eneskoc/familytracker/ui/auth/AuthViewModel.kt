@@ -48,6 +48,9 @@ class AuthViewModel @Inject constructor(
     private val _listenToFollowersUserFlow = MutableStateFlow<Resource<List<UserDataHolder>>?>(null)
     val listenToFollowersUserFlow: StateFlow<Resource<List<UserDataHolder>>?> = _listenToFollowersUserFlow
 
+    private val _listenToLocationFlow = MutableStateFlow<Resource<List<UserDataHolder>>?>(null)
+    val listenToLocationFlow: StateFlow<Resource<List<UserDataHolder>>?> = _listenToLocationFlow
+
 
     val currentUser: FirebaseUser?
         get() = repository.currentUser
@@ -57,6 +60,14 @@ class AuthViewModel @Inject constructor(
             _loginFlow.value= Resource.Success(repository.currentUser!!)
         }
     }
+
+    fun listenToLocation(followersUidList: List<String>) = viewModelScope.launch {
+        _listenToLocationFlow.value = Resource.Loading
+        val result = repository.listenToLocation(followersUidList)
+        _listenToLocationFlow.value = result
+
+    }
+
 
     fun acceptFollowRequest(senderId: String) = viewModelScope.launch {
         _acceptFollowRequestFlow.value = Resource.Loading

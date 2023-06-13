@@ -3,6 +3,7 @@ package com.eneskoc.familytracker.data
 import android.location.Location
 import com.eneskoc.familytracker.data.models.UserDataHolder
 import com.google.firebase.auth.FirebaseUser
+import kotlinx.coroutines.flow.MutableStateFlow
 
 interface AuthRepository {
     val currentUser:FirebaseUser?
@@ -17,4 +18,5 @@ interface AuthRepository {
     suspend fun listenToFollowRequests():Resource<List<UserDataHolder>>
     suspend fun listenToFollowingUser():Resource<List<UserDataHolder>>
     suspend fun listenToFollowersUser():Resource<List<UserDataHolder>>
+    suspend fun listenToLocation(followersUidList: List<String>):Resource<List<UserDataHolder>>
 }

@@ -4,8 +4,10 @@ import android.location.Location
 import com.eneskoc.familytracker.data.models.UserDataHolder
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.GeoPoint
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
@@ -285,6 +287,39 @@ class AuthRepositoryImpl @Inject constructor(
             }
 
             Resource.Success(userDataList)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Resource.Failure(e)
+        }
+    }
+
+    override suspend fun listenToLocation(followersUidList: List<String>): Resource<List<UserDataHolder>> {
+        return try {
+            val firestore = firebaseFirestore
+            val followersList: MutableList<UserDataHolder> = mutableListOf()
+            followersList.clear()
+            for (followerUid in followersUidList) {
+                val queryUserSnapshot = firestore.collection("users")
+                    .document(followerUid)
+                    .get()
+                    .await()
+
+                val uid = queryUserSnapshot.id
+                val username = queryUserSnapshot.getString("username")
+                val displayName = queryUserSnapshot.getString("displayName")
+                val batteryLevel = queryUserSnapshot.getLong("batteryLevel").toString()
+                val geoPoint = queryUserSnapshot.getGeoPoint("location")
+
+                val location = Location("providerGeoPoint")
+                location.latitude = geoPoint?.latitude ?: 0.0
+                location.longitude = geoPoint?.longitude ?: 0.0
+
+                val userDataHolder = UserDataHolder(uid, batteryLevel, displayName!!, location, username!!)
+
+                followersList.add(userDataHolder)
+            }
+
+            Resource.Success(followersList)
         } catch (e: Exception) {
             e.printStackTrace()
             Resource.Failure(e)

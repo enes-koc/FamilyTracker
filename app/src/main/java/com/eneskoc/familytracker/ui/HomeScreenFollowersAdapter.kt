@@ -1,6 +1,7 @@
 package com.eneskoc.familytracker.ui.notification
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.eneskoc.familytracker.data.models.UserDataHolder
@@ -35,6 +36,18 @@ class HomeScreenFollowersAdapter(var userDataList: List<UserDataHolder>) :
         val user = userDataList[position]
         holder.binding.tvUserDisplayName.text = user.displayName
         holder.binding.tvUsername.text = user.username
+
+        holder.itemView.setOnLongClickListener {
+            holder.binding.layoutFollowers.visibility = View.GONE
+            holder.binding.layoutDeleteItem.visibility = View.VISIBLE
+            holder.binding.tvDeleteMessage.text= "Do you want to remove ${user.displayName} from your follower list?"
+            true
+        }
+
+        holder.binding.btnNo.setOnClickListener {
+            holder.binding.layoutFollowers.visibility = View.VISIBLE
+            holder.binding.layoutDeleteItem.visibility = View.GONE
+        }
 
 //        holder.binding.btnReject.setOnClickListener {
 //            itemClickListener?.onRejectButtonClicked(user)

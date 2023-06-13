@@ -39,7 +39,9 @@ import com.google.android.material.tabs.TabLayout
 import com.vmadalin.easypermissions.EasyPermissions
 import com.vmadalin.easypermissions.dialogs.SettingsDialog
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 
 @AndroidEntryPoint
 class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
@@ -57,6 +59,9 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
     private lateinit var followingAdapter: HomeScreenFollowingAdapter
     private lateinit var followersAdapter: HomeScreenFollowersAdapter
 
+    private var locationJob: Job? = null
+    private var followingList: MutableList<UserDataHolder> = mutableListOf()
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
@@ -69,6 +74,7 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
         binding.mapView.onCreate(savedInstanceState)
         requestPermission()
         subscribeToObservers()
+        startLoop()
 
         followingAdapter = HomeScreenFollowingAdapter(emptyList())
         //followingAdapter.setOnItemClickListener(this)
@@ -80,18 +86,11 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
 
         listenFollowingUser()
 
-
         binding.toolbar.title = authViewModel.currentUser?.displayName ?: "Empty"
 
         binding.mapView.getMapAsync {
             map = it
-            val locationList: List<LatLng> = listOf(
-                LatLng(37.183208, 33.211214),
-                LatLng(37.178992, 33.218786),
-                LatLng(37.188592, 33.218786)
-            )
-            updateMapMarker(locationList)
-            updateMapCamera(locationList)
+            //updateMapCamera(followingList)
         }
 
 
@@ -103,16 +102,19 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner) {
             authViewModel.logout()
             findNavController().navigate(R.id.action_homeScreen_to_loginScreen)
+            locationJob?.cancel()
         }
 
         binding.toolbar.setNavigationOnClickListener {
             authViewModel.logout()
             findNavController().navigate(R.id.action_homeScreen_to_loginScreen)
+            locationJob?.cancel()
         }
 
         topBarNotification.setOnClickListener {
             val notificationPopup = NotificationDialogFragmentScreen()
             notificationPopup.show(requireActivity().supportFragmentManager, "NotificationDialog")
+            listenToLocation()
         }
 
         topBarSearch.setOnClickListener {
@@ -142,6 +144,7 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
                         binding.recyclerViewFollowing.visibility = View.GONE
                         binding.recyclerViewFollowers.visibility = View.VISIBLE
                         listenFollowersUser()
+
                     }
                 }
             }
@@ -149,6 +152,62 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
             override fun onTabUnselected(tab: TabLayout.Tab) {}
             override fun onTabReselected(tab: TabLayout.Tab) {}
         })
+    }
+
+    fun startLoop() {
+        locationJob = CoroutineScope(Dispatchers.IO).launch {
+            while (isActive) {
+                delay(3_000)
+                listenToLocation()
+            }
+        }
+    }
+
+    fun listenToLocation() {
+        val tempFollowingList = mutableListOf<String>()
+        authViewModel.listenToFollowingUser()
+        viewLifecycleOwner.lifecycleScope.launch {
+            authViewModel.listenToFollowingUserFlow.collect { resource ->
+                when (resource) {
+                    is Resource.Success -> {
+                        resource.result.forEach { tempFollowingList.add(it.uid!!) }
+                        authViewModel.listenToLocation(tempFollowingList)
+                    }
+                    is Resource.Failure -> {}
+                    is Resource.Loading -> {}
+                    else -> {}
+                }
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            authViewModel.listenToLocationFlow.collect { resource ->
+                when (resource) {
+                    is Resource.Success -> {
+                        followingList.clear()
+                        followingList.addAll(resource.result)
+
+                        CoroutineScope(Dispatchers.Main).launch {
+                            binding.mapView.getMapAsync {
+                                it.clear()
+                                updateMapMarker(followingList)
+                            }
+                        }
+
+                    }
+                    is Resource.Failure -> {
+                        val exception = resource.exception
+                        Snackbar.make(
+                            requireView(),
+                            exception.message.toString(),
+                            Snackbar.LENGTH_LONG
+                        ).show()
+                    }
+                    is Resource.Loading -> {}
+                    else -> {}
+                }
+            }
+        }
     }
 
     fun listenFollowingUser() {
@@ -161,10 +220,12 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
                         followingAdapter.userDataList = resource.result
                         followingAdapter.notifyDataSetChanged()
 
+
                         if (resource.result.isEmpty()) {
                             binding.tvResultMessage.visibility = View.VISIBLE
                             binding.recyclerViewFollowing.visibility = View.GONE
-                            binding.tvResultMessage.text="You are not following any users. You can search for users to follow."
+                            binding.tvResultMessage.text =
+                                "You are not following any users. You can search for users to follow."
 
                         } else {
                             binding.tvResultMessage.visibility = View.GONE
@@ -185,6 +246,7 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
             }
         }
     }
+
     fun listenFollowersUser() {
         authViewModel.listenToFollowersUser()
 
@@ -198,7 +260,7 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
                         if (resource.result.isEmpty()) {
                             binding.tvResultMessage.visibility = View.VISIBLE
                             binding.recyclerViewFollowers.visibility = View.GONE
-                            binding.tvResultMessage.text="There are no users following you."
+                            binding.tvResultMessage.text = "There are no users following you."
                         } else {
                             binding.tvResultMessage.visibility = View.GONE
                             binding.recyclerViewFollowers.visibility = View.VISIBLE
@@ -219,11 +281,11 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
         }
     }
 
-    fun updateMapMarker(locationList: List<LatLng>) {
-        for (location in locationList) {
+    fun updateMapMarker(followingList: MutableList<UserDataHolder>) {
+        for (follower in followingList) {
             val markerOptions = MarkerOptions()
-                .position(location)
-                .title("Marker Header")
+                .position(LatLng(follower.location!!.latitude, follower.location.longitude))
+                .title(follower.displayName)
                 .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
             map?.addMarker(markerOptions)
         }
@@ -274,13 +336,11 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
         })
         TrackingServices.location.observe(viewLifecycleOwner, Observer {
             lastLocation = it
-            println("LOCATION : ${lastLocation.latitude}, ${lastLocation.longitude}")
             sendDataToFireStore(lastLocation, batteryLevel)
         })
 
         TrackingServices.batteryLevel.observe(viewLifecycleOwner, Observer {
             batteryLevel = it
-            println("BATTERY LEVEL : $batteryLevel")
         })
     }
 
@@ -324,7 +384,11 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
 
     override fun onPermissionsGranted(requestCode: Int, perms: List<String>) {}
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         EasyPermissions.onRequestPermissionsResult(requestCode, permissions, grantResults, true)
     }
@@ -347,6 +411,7 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
     override fun onPause() {
         super.onPause()
         binding.mapView.onPause()
+        locationJob?.cancel()
     }
 
     override fun onLowMemory() {
