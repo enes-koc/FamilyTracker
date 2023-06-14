@@ -244,7 +244,13 @@ class AuthRepositoryImpl @Inject constructor(
                     val displayName = queryUserSnapshot.getString("displayName")
                     val username = queryUserSnapshot.getString("username")
                     val batteryLevel = queryUserSnapshot.getLong("batteryLevel").toString()
-                    val userDataHolder = UserDataHolder(uid, batteryLevel,displayName!!, null,username!!)
+                    val geoPoint = queryUserSnapshot.getGeoPoint("location")
+
+                    val location = Location("providerGeoPoint")
+                    location.latitude = geoPoint?.latitude ?: 0.0
+                    location.longitude = geoPoint?.longitude ?: 0.0
+
+                    val userDataHolder = UserDataHolder(uid, batteryLevel,displayName!!, location,username!!)
 
                     userDataList.add(userDataHolder)
                 }

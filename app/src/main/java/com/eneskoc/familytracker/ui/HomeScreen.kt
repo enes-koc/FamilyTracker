@@ -30,10 +30,7 @@ import com.eneskoc.familytracker.servives.TrackingServices
 import com.eneskoc.familytracker.ui.notification.*
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
-import com.google.android.gms.maps.model.BitmapDescriptorFactory
-import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.LatLngBounds
-import com.google.android.gms.maps.model.MarkerOptions
+import com.google.android.gms.maps.model.*
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.tabs.TabLayout
 import com.vmadalin.easypermissions.EasyPermissions
@@ -61,7 +58,7 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
 
     private var locationJob: Job? = null
     private var followingList: MutableList<UserDataHolder> = mutableListOf()
-
+    private val markerMap: MutableMap<String, Marker?> = mutableMapOf()
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
@@ -157,21 +154,25 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
     fun startLoop() {
         locationJob = CoroutineScope(Dispatchers.IO).launch {
             while (isActive) {
-                delay(3_000)
+                delay(10_000)
                 listenToLocation()
             }
         }
     }
 
     fun listenToLocation() {
-        val tempFollowingList = mutableListOf<String>()
+        val tempFollowingList = mutableListOf<UserDataHolder>()
         authViewModel.listenToFollowingUser()
         viewLifecycleOwner.lifecycleScope.launch {
             authViewModel.listenToFollowingUserFlow.collect { resource ->
                 when (resource) {
                     is Resource.Success -> {
-                        resource.result.forEach { tempFollowingList.add(it.uid!!) }
-                        authViewModel.listenToLocation(tempFollowingList)
+                        tempFollowingList.addAll(resource.result)
+                        binding.mapView.getMapAsync {
+                            updateMapMarker(tempFollowingList)
+                        }
+                        followingAdapter.userDataList = resource.result
+                        followingAdapter.notifyDataSetChanged()
                     }
                     is Resource.Failure -> {}
                     is Resource.Loading -> {}
@@ -180,34 +181,36 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
             }
         }
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            authViewModel.listenToLocationFlow.collect { resource ->
-                when (resource) {
-                    is Resource.Success -> {
-                        followingList.clear()
-                        followingList.addAll(resource.result)
+//        authViewModel.listenToLocation(tempFollowingList)
 
-                        CoroutineScope(Dispatchers.Main).launch {
-                            binding.mapView.getMapAsync {
-                                it.clear()
-                                updateMapMarker(followingList)
-                            }
-                        }
-
-                    }
-                    is Resource.Failure -> {
-                        val exception = resource.exception
-                        Snackbar.make(
-                            requireView(),
-                            exception.message.toString(),
-                            Snackbar.LENGTH_LONG
-                        ).show()
-                    }
-                    is Resource.Loading -> {}
-                    else -> {}
-                }
-            }
-        }
+//        viewLifecycleOwner.lifecycleScope.launch {
+//            authViewModel.listenToLocationFlow.collect { resource ->
+//                when (resource) {
+//                    is Resource.Success -> {
+//                        followingList.clear()
+//                        followingList.addAll(resource.result)
+//
+//                        CoroutineScope(Dispatchers.Main).launch {
+//                            binding.mapView.getMapAsync {
+//                                it.clear()
+//                                updateMapMarker(followingList)
+//                            }
+//                        }
+//
+//                    }
+//                    is Resource.Failure -> {
+//                        val exception = resource.exception
+//                        Snackbar.make(
+//                            requireView(),
+//                            exception.message.toString(),
+//                            Snackbar.LENGTH_LONG
+//                        ).show()
+//                    }
+//                    is Resource.Loading -> {}
+//                    else -> {}
+//                }
+//            }
+//        }
     }
 
     fun listenFollowingUser() {
@@ -281,15 +284,47 @@ class HomeScreen : Fragment(), EasyPermissions.PermissionCallbacks {
         }
     }
 
-    fun updateMapMarker(followingList: MutableList<UserDataHolder>) {
-        for (follower in followingList) {
-            val markerOptions = MarkerOptions()
-                .position(LatLng(follower.location!!.latitude, follower.location.longitude))
-                .title(follower.displayName)
-                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
-            map?.addMarker(markerOptions)
+
+    fun updateMapMarker(followingList: List<UserDataHolder>) {
+        val existingUserIds = markerMap.keys.toSet()
+        val newUserIds = followingList.mapNotNull { it.uid }
+
+        for (user in followingList) {
+            val marker = markerMap[user.uid]
+            if (marker == null) {
+                val markerOptions = MarkerOptions()
+                    .position(LatLng(user.location!!.latitude, user.location.longitude))
+                    .title(user.displayName)
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
+                val newMarker = map?.addMarker(markerOptions)
+                newMarker?.let {
+                    if (user.uid != null) {
+                        markerMap[user.uid] = it
+                    }
+                }
+            } else {
+                // Mevcut markerın konumunu güncelle
+                marker.position = LatLng(user.location!!.latitude, user.location.longitude)
+            }
+        }
+
+        for (userId in existingUserIds) {
+            if (!newUserIds.contains(userId)) {
+                markerMap[userId]?.remove()
+                markerMap.remove(userId)
+            }
         }
     }
+
+//    fun updateMapMarker(followingList: MutableList<UserDataHolder>) {
+//        for (follower in followingList) {
+//            val markerOptions = MarkerOptions()
+//                .position(LatLng(follower.location!!.latitude, follower.location.longitude))
+//                .title(follower.displayName)
+//                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
+//            map?.addMarker(markerOptions)
+//        }
+//    }
 
     fun updateMapCamera(locationList: List<LatLng>) {
         val builder = LatLngBounds.Builder()
